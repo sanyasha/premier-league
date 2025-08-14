@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tournament Bar Graph</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #9593ff 0%, #d42424 100%);
+            color: white;
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .container {
+            width: 90%;
+            max-width: 1500px;
+            text-align: center;
+        }
+
+        .title {
+            font-size: 3em;
+            font-weight: 300;
+            margin-bottom: 40px;
+            opacity: 0.9;
+        }
+
+        .chart-container {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+
+        .bar-chart {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: end;
+            justify-content: space-around;
+            height: 400px;
+            margin: 20px 0;
+            padding: 0 20px;
+        }
+
+        .bar-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            flex: 1;
+            max-width: 80px;
+            margin: 0 5px;
+        }
+
+        .bar {
+            width: 100%;
+            background: linear-gradient(180deg, #de4ffe 0%, #bec0ff 100%);
+            border-radius: 8px 8px 0 0;
+            transition: all 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            box-shadow: 0 4px 15px rgba(79, 172, 254, 0.3);
+            animation: slideUp 1.2s ease-out;
+        }
+
+        @keyframes slideUp {
+            from {
+                height: 0 !important;
+                opacity: 0;
+            }
+            to {
+                opacity: 1;
+            }
+        }
+
+        @font-face { 
+        font-family: 'FridayNightLights';
+         src: url('FridayNightLights-l5pe.ttf') format('truetype'); }
+        .bar:hover {
+            filter: brightness(1.2);
+            transform: scale(1.05);
+        }
+
+        .bar-value {
+            position: absolute;
+            top: -30px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 1.2em;
+            font-weight: bold;
+            color: white;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+        }
+
+        .bar-label {
+            margin-top: 15px;
+            padding: 3px;
+            font-size: 1.1em;
+            font-weight: 500;
+            color: rgba(255, 255, 255, 0.9);
+        }
+
+        .last-updated {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            font-size: 0.9em;
+            opacity: 0.7;
+            background: rgba(97, 105, 255, 0.2);
+            padding: 8px 15px;
+            border-radius: 20px;
+            transition: all 0.3s ease;
+        }
+
+        .refreshing {
+            background: rgba(14, 235, 255, 0.3) !important;
+            opacity: 1 !important;
+            animation: pulse 1s infinite;
+        }
+
+        .refresh-indicator {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            font-size: 1em;
+            background: rgba(99, 56, 179, 0.8);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 25px;
+            opacity: 0;
+            transform: translateY(-20px);
+            transition: all 0.4s ease;
+        }
+
+        .refresh-indicator.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .loading {
+            font-size: 1.5em;
+            opacity: 0.8;
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 0.5; }
+            50% { opacity: 1; }
+        }
+
+        .error {
+            color: #ff6b6b;
+            font-size: 1.2em;
+        }
+
+        .logo {
+            max-width: 100%;
+            height: auto;
+            margin-bottom: 20px;
+            transform: translateY(20%); 
+            animation: slideUp 0.6s ease-out forwards;  
+            
+        }
+        @keyframes slideUp { to { transform: translateY(0); } }
+
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!--<h1 class="title" style="font-family: FridayNightLights, sans-serif;">Premiere League Standings</h1>-->
+        <img class="logo" src="premiereLeague.png" alt="description" style="max-width: 70%;">
+        <div class="chart-container">
+            <div id="chart-display">
+                <div class="loading">Loading tournament data...</div>
+            </div>
+        </div>
+
+        <div class="last-updated" id="last-updated-container">
+            Last updated: <span id="last-update">Never</span>
+        </div>
+
+        <div class="refresh-indicator" id="refresh-indicator">
+            🔄 Updating data...
+        </div>
+        <div class="chart-container" style="margin-top: 30px;">
+            <h3>Playing Now</h3>
+            <div class="bar-label">Field 1: Team Alpha vs Team Beta</div>
+            <div class="bar-label">Field 2: Team Gamma vs Team Delta</div>
+            <div class="bar-label">Field 3: Team Epsilon vs Team Zeta</div>
+           </div>
+         <img class="logo" src="IBZ_Logo.png" alt="description" style="max-width: 30%; bottom: 0; margin-top: 30px;">
+    
+        </div>
+
+
+   
+    <script>
+        // Google Apps Script Web App URL - Replace with your actual URL
+        const APPS_SCRIPT_URL = 'YOUR_NEW_APPS_SCRIPT_URL_HERE';
+        
+        // Backup URLs for your Google Sheet
+        const SHEET_HTML_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQSbQkxYYdJXmWWfATyJUU-ntIDtcnt1UVJ-nAkXZeN5ETE-wUsY52emKH14wcg0YtmCI8wn9TvGyn_/pubhtml';
+        const SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQSbQkxYYdJXmWWfATyJUU-ntIDtcnt1UVJ-nAkXZeN5ETE-wUsY52emKH14wcg0YtmCI8wn9TvGyn_/pub?output=csv';
+
+        function showRefreshIndicator() {
+            const indicator = document.getElementById('refresh-indicator');
+            const lastUpdated = document.getElementById('last-updated-container');
+            
+            indicator.classList.add('show');
+            lastUpdated.classList.add('refreshing');
+            
+            setTimeout(() => {
+                indicator.classList.remove('show');
+                lastUpdated.classList.remove('refreshing');
+            }, 2000);
+        }
+
+        function createBarChart(data) {
+            // Sort data by games won (highest first)
+            data.sort((a, b) => b.games - a.games);
+            
+            const maxGames = Math.max(...data.map(item => item.games));
+            
+            let html = '<div class="bar-chart">';
+            
+            data.forEach((item, index) => {
+                const barHeight = (item.games / maxGames) * 350; // Max height 350px
+                html += `
+                    <div class="bar-item">
+                        <div class="bar" style="height: ${barHeight}px;">
+                            <div class="bar-value">${item.games}</div>
+                        </div>
+                        <div class="bar-label">${item.team} </div>
+                    </div>
+                `;
+            });
+            
+            html += '</div>';
+            return html;
+        }
+
+        function parseHTMLTable(html) {
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(html, 'text/html');
+            const tables = doc.querySelectorAll('table');
+            
+            for (let table of tables) {
+                const rows = table.querySelectorAll('tr');
+                const data = [];
+                
+                // Skip header row, start from row 1
+                for (let i = 1; i < rows.length; i++) {
+                    const cells = rows[i].querySelectorAll('td');
+                    if (cells.length >= 2) {
+                        const team = cells[0].textContent.trim();
+                        const games = cells[1].textContent.trim();
+                        
+                        if (team && games && !isNaN(parseInt(games))) {
+                            data.push({
+                                team: team,
+                                games: parseInt(games)
+                            });
+                        }
+                    }
+                }
+                
+                if (data.length > 0) {
+                    return data;
+                }
+            }
+            
+            return [];
+        }
+
+        function parseCSV(csv) {
+            const lines = csv.trim().split('\n');
+            const data = [];
+            
+            // Skip header row, process data rows
+            for (let i = 1; i < lines.length; i++) {
+                const row = lines[i].split(',');
+                if (row.length >= 2 && row[0].trim() && row[1].trim()) {
+                    data.push({
+                        team: row[0].trim(),
+                        games: parseInt(row[1].trim()) || 0
+                    });
+                }
+            }
+            
+            return data;
+        }
+
+        async function fetchSheetData() {
+            showRefreshIndicator();
+            
+            // Define timestamp at function level so it's available everywhere
+            const timestamp = new Date().getTime();
+            let data = [];
+            
+            try {
+                // Method 1: Try Google Apps Script first (Real-time)
+                if (APPS_SCRIPT_URL !== 'YOUR_NEW_APPS_SCRIPT_URL_HERE') {
+                    console.log('Trying Google Apps Script method...');
+                    
+                    try {
+                        const response = await fetch(`${APPS_SCRIPT_URL}?_=${timestamp}`, {
+                            cache: 'no-cache',
+                            headers: {
+                                'Cache-Control': 'no-cache',
+                                'Pragma': 'no-cache'
+                            }
+                        });
+                        
+                        if (response.ok) {
+                            const jsonData = await response.json();
+                            console.log('Apps Script response:', jsonData);
+                            
+                            if (jsonData.success && jsonData.data && jsonData.data.length > 0) {
+                                data = jsonData.data;
+                                console.log('✅ Real-time method successful!');
+                            } else {
+                                throw new Error('No data in Apps Script response');
+                            }
+                        } else {
+                            throw new Error(`Apps Script failed: ${response.status}`);
+                        }
+                    } catch (appsError) {
+                        console.log('Apps Script failed:', appsError.message);
+                        throw appsError;
+                    }
+                } else {
+                    console.log('Apps Script URL not configured, trying fallback methods...');
+                    throw new Error('Apps Script not configured');
+                }
+                
+            } catch (primaryError) {
+                console.log('Trying fallback methods...');
+                
+                try {
+                    // Method 2: HTML scraping
+                    console.log('Trying HTML method...');
+                    const htmlResponse = await fetch(`${SHEET_HTML_URL}?_=${timestamp}`, {
+                        cache: 'no-cache'
+                    });
+                    
+                    if (htmlResponse.ok) {
+                        const html = await htmlResponse.text();
+                        data = parseHTMLTable(html);
+                        
+                        if (data.length > 0) {
+                            console.log('✅ HTML method successful!');
+                        } else {
+                            throw new Error('No data in HTML');
+                        }
+                    } else {
+                        throw new Error(`HTML method failed: ${htmlResponse.status}`);
+                    }
+                } catch (htmlError) {
+                    console.log('HTML method failed:', htmlError.message);
+                    
+                    // Method 3: CSV fallback
+                    console.log('Trying CSV method...');
+                    const csvResponse = await fetch(`${SHEET_CSV_URL}&_=${timestamp}`, {
+                        cache: 'no-cache'
+                    });
+                    
+                    if (csvResponse.ok) {
+                        const csv = await csvResponse.text();
+                        data = parseCSV(csv);
+                        
+                        if (data.length > 0) {
+                            console.log('✅ CSV method successful!');
+                        } else {
+                            throw new Error('No data found in any method');
+                        }
+                    } else {
+                        throw new Error(`All methods failed. CSV status: ${csvResponse.status}`);
+                    }
+                }
+            }
+            
+            // Display the data
+            if (data.length === 0) {
+                throw new Error('No valid data found');
+            }
+            
+            const chartHtml = createBarChart(data);
+            document.getElementById('chart-display').innerHTML = chartHtml;
+            document.getElementById('last-update').textContent = new Date().toLocaleTimeString();
+            
+        // } catch (error) {
+        //     console.error('Final error:', error);
+        //     document.getElementById('chart-display').innerHTML = 
+        //         `<div class="error">Error: ${error.message}</div>`;
+        // }
+    }
+
+        // Initial load
+        fetchSheetData();
+
+        // Auto-refresh every 30 seconds
+        setInterval(fetchSheetData, 30000);
+
+        // Manual refresh with 'R' key
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'r' || event.key === 'R') {
+                fetchSheetData();
+            }
+        });
+    </script>
+</body>
+</html>
